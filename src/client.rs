@@ -439,6 +439,15 @@ impl<S: Read + Write> Client<S> {
         self.run_command("list", (term, query)).and_then(|_| self.read_pairs().map(|p| p.map(|p| p.1)).collect())
     }
 
+    /// dirty hack to list by 2 terms
+    pub fn list_group_2(&mut self, terms: (String, String)) -> Result<Vec<(String, String)>> {
+        self.run_command("list", (terms.0, "group", terms.1))
+            .and_then(
+                |_| self.read_pairs().map(|p| p.map(|q| (q.0, q.1))).collect()
+            )
+    }
+
+
     /// Find all songs in the db that match query and adds them to current playlist.
     pub fn findadd(&mut self, query: &Query) -> Result<()> {
         self.run_command("findadd", query).and_then(|_| self.expect_ok())
