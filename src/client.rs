@@ -21,18 +21,19 @@ use crate::status::{ReplayGain, Status};
 use crate::sticker::Sticker;
 use crate::version::Version;
 
+use itertools::{intersperse, Itertools};
 use std::collections::HashMap;
 use std::convert::From;
 use std::io::{BufRead, Lines, Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
-use itertools::{intersperse, Itertools};
 
 // Client {{{
 
 /// Client connection
 #[derive(Debug)]
 pub struct Client<S = TcpStream>
-where S: Read + Write
+where
+    S: Read + Write,
 {
     socket: BufStream<S>,
     /// MPD protocol version
@@ -443,35 +444,36 @@ impl<S: Read + Write> Client<S> {
     /// dirty hack to list by 2 terms
     pub fn list_group_2(&mut self, terms: (String, String)) -> Result<Vec<(String, String)>> {
         self.run_command("list", (terms.0, "group", terms.1))
-            .and_then(
-                |_| self.read_pairs().map(|p| p.map(|q| (q.0, q.1))).collect()
-            )
+            .and_then(|_| self.read_pairs().map(|p| p.map(|q| (q.0, q.1))).collect())
     }
 
     /// parse list by groups (does string concat)
-    pub fn parse_list_groups(&mut self, terms: Vec<&str>) -> Result<Vec<String>> {
+    pub fn parse_list_groups(&mut self, terms: Vec<&str>) -> Result<Vec<Vec<String>>> {
         let mut parse_state: Vec<String> = Vec::with_capacity(terms.len());
-        let mut out: Vec<String> = Vec::new();
+        let mut out: Vec<Vec<String>> = Vec::new();
         for pair in self.read_pairs() {
             let (tag, val) = pair?;
-            if tag.to_lowercase() == terms.last().unwrap().to_lowercase() {
-                parse_state.clear();
-                parse_state.push(val.to_string());
-            } else if tag.to_lowercase() == terms.first().unwrap().to_lowercase() {
-                out.push(parse_state.join("/") + "/" + &val)
+            let term_idx = terms.iter().rev().position(|i| i.to_lowercase() == tag.to_lowercase()).unwrap();
+            if term_idx < parse_state.len() {
+                parse_state[term_idx] = val.clone();
+                for i in ((term_idx + 1)..(parse_state.len())).rev() {
+                    parse_state.remove(i);
+                }
             } else {
-                parse_state.push(val.to_string());
+                parse_state.push(val);
+            }
+            if parse_state.len() > 2 {
+                out.push(parse_state.clone());
             }
         }
         Ok(out)
     }
 
     /// list by any number of terms (with string concat)
-    pub fn list_groups(&mut self, terms: Vec<&str>) -> Result<Vec<String>> {
+    pub fn list_groups(&mut self, terms: Vec<&str>) -> Result<Vec<Vec<String>>> {
         self.run_command("list", intersperse(terms.clone(), "group").collect::<Vec<&str>>())
             .and_then(|_| self.parse_list_groups(terms))
     }
-
 
     /// Find all songs in the db that match query and adds them to current playlist.
     pub fn findadd(&mut self, query: &Query) -> Result<()> {
