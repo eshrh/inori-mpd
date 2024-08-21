@@ -237,6 +237,17 @@ impl<'a, T: ToArguments> ToArguments for &'a [T] {
     }
 }
 
+impl ToArguments for Vec<&str> {
+    fn to_arguments<F, E>(&self, f: &mut F) -> StdResult<(), E>
+    where F: FnMut(&str) -> StdResult<(), E> {
+        for arg in self {
+            arg.to_arguments(f)?
+        }
+        Ok(())
+    }
+
+}
+
 pub struct Quoted<'a, D: fmt::Display + 'a + ?Sized>(pub &'a D);
 
 impl<'a, D: fmt::Display + 'a + ?Sized> fmt::Display for Quoted<'a, D> {
