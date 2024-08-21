@@ -25,6 +25,7 @@ use std::collections::HashMap;
 use std::convert::From;
 use std::io::{BufRead, Lines, Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
+use itertools::{intersperse, Itertools};
 
 // Client {{{
 
@@ -445,6 +446,30 @@ impl<S: Read + Write> Client<S> {
             .and_then(
                 |_| self.read_pairs().map(|p| p.map(|q| (q.0, q.1))).collect()
             )
+    }
+
+    /// parse list by groups (does string concat)
+    pub fn parse_list_groups(&mut self, terms: Vec<&str>) -> Result<Vec<String>> {
+        let mut parse_state: Vec<String> = Vec::with_capacity(terms.len());
+        let mut out: Vec<String> = Vec::new();
+        for pair in self.read_pairs() {
+            let (tag, val) = pair?;
+            if tag.to_lowercase() == terms.last().unwrap().to_lowercase() {
+                parse_state.clear();
+                parse_state.push(val.to_string());
+            } else if tag.to_lowercase() == terms.first().unwrap().to_lowercase() {
+                out.push(parse_state.join("/") + "/" + &val)
+            } else {
+                parse_state.push(val.to_string());
+            }
+        }
+        Ok(out)
+    }
+
+    /// list by any number of terms (with string concat)
+    pub fn list_groups(&mut self, terms: Vec<&str>) -> Result<Vec<String>> {
+        self.run_command("list", intersperse(terms.clone(), "group").collect::<Vec<&str>>())
+            .and_then(|_| self.parse_list_groups(terms))
     }
 
 

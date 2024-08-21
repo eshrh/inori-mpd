@@ -13,6 +13,7 @@ edition = "2018"
 bufstream = { version = "0.1", default-features = false }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_repr = { version = "0.1", optional = true }
+itertools = "*"
 
 [dev-dependencies]
 tempfile = "3.8.1"
