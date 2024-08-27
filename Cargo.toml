@@ -1,12 +1,11 @@
 [package]
-authors = ["Konstantin Stepanov <me@kstep.me>"]
-description = "A client library for MPD (music player daemon), like libmpdclient but in Rust"
-documentation = "http://kstep.me/rust-mpd/mpd/index.html"
-homepage = "https://github.com/kstep/rust-mpd"
-license = "MIT/Apache-2.0"
-name = "mpd"
-repository = "https://github.com/kstep/rust-mpd.git"
-version = "0.1.0"
+authors = ["Konstantin Stepanov <me@kstep.me>", "esrh"]
+description = "fork of rust-mpd with extra features used in the inori client"
+homepage = "https://github.com/eshrh/rust-mpd"
+license = "Unlicense"
+name = "inori-mpd"
+repository = "https://github.com/eshrh/rust-mpd.git"
+version = "0.1.1"
 edition = "2018"
 
 [dependencies]
