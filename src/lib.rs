@@ -1,4 +1,5 @@
 #![warn(missing_docs)]
+#![allow(warnings)]
 
 //! MPD client for Rust
 //!
