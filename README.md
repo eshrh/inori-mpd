@@ -23,6 +23,11 @@ written, but they get ~~the~~ *my* job done. New additions are:
   and so on. This is primarily useful to obtain
   one entry for each object in the library; I use it in inori for the
   global search feature.
+- `Client<StreamTypes>` type which supports both `TcpStream` and
+  `UnixStream` connections. This type has implementations
+  `connect_tcp`, `connect_socket`, `connect` (which tries both), and
+  also `default` which implements the default fallbacks specified [by
+  the mpd doc](https://mpd.readthedocs.io/en/latest/client.html#connecting-to-mpd)
 
 With that said, my bar for quality is honestly quite low, I'd rather
 save anybody else the trouble of having to make their own fork to

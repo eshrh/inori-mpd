@@ -4,8 +4,8 @@ description = "fork of rust-mpd with extra features used in the inori client"
 homepage = "https://github.com/eshrh/rust-mpd"
 license = "Unlicense"
 name = "inori-mpd"
-repository = "https://github.com/eshrh/rust-mpd.git"
-version = "0.1.1"
+repository = "https://github.com/eshrh/inori-mpd.git"
+version = "0.2.0"
 edition = "2018"
 
 [dependencies]
@@ -13,7 +13,7 @@ bufstream = { version = "0.1", default-features = false }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_repr = { version = "0.1", optional = true }
 dirs = "5.0.1"
-itertools = "*"
+itertools = "0.13.0"
 
 [dev-dependencies]
 tempfile = "3.8.1"
