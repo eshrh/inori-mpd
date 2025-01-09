@@ -24,8 +24,12 @@ use crate::version::Version;
 use itertools::{intersperse, Itertools};
 use std::collections::HashMap;
 use std::convert::From;
+use std::env;
 use std::io::{BufRead, Lines, Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
+#[cfg(unix)]
+use std::os::unix::net::UnixStream;
+use std::path::Path;
 
 // Client {{{
 
@@ -43,6 +47,155 @@ where
 impl Default for Client<TcpStream> {
     fn default() -> Client<TcpStream> {
         Client::<TcpStream>::connect("127.0.0.1:6600").unwrap()
+    }
+}
+
+#[cfg(unix)]
+impl Default for Client<UnixStream> {
+    fn default() -> Client<UnixStream> {
+        Client::<UnixStream>::connect_socket("/run/mpd/socket").unwrap()
+    }
+}
+
+/// Enum for stream types
+pub enum StreamTypes {
+    /// TcpStream
+    Tcp(TcpStream),
+    /// UnixStream
+    #[cfg(unix)]
+    Unix(UnixStream)
+}
+
+impl Write for StreamTypes {
+    fn write(&mut self, buf: &[u8]) -> std::result::Result<usize, std::io::Error> {
+        match self {
+            Self::Tcp(s) => s.write(buf),
+            Self::Unix(s) => s.write(buf)
+        }
+    }
+    fn flush(&mut self) -> std::result::Result<(), std::io::Error> {
+        match self {
+            Self::Tcp(s) => s.flush(),
+            Self::Unix(s) => s.flush()
+        }
+    }
+}
+impl Read for StreamTypes {
+    fn read(&mut self, buf: &mut [u8]) -> std::result::Result<usize, std::io::Error> {
+        match self {
+            Self::Tcp(s) => s.read(buf),
+            Self::Unix(s) => s.read(buf)
+        }
+    }
+}
+
+impl Default for Client<StreamTypes> {
+    fn default() -> Client<StreamTypes> {
+        /*
+        1. If MPD_HOST & MPD_PORT: Tcp(MPD_HOST:MPD_PORT)
+        2. If MPD_HOST: Tcp(MPD_HOST:6600)
+        3. If unix & XDG_RUNTIME_DIR: Unix(XDG_RUNTIME_DIR/mpd/socket)
+        4. If unix: Unix(/run/mpd/socket)
+        5. Tcp(localhost:6600)
+        6. Panic!.
+        TODO: linux abstract socket support (@socket)
+        TODO: use timeouts
+         */
+        // let timeout =  Duration::from_secs(
+        //     env::var("MPD_TIMEOUT").ok()
+        //         .and_then(|s| s.parse::<u64>().ok())
+        //         .unwrap_or(30)
+        // );
+        if let Ok(host) = env::var("MPD_HOST") {
+            if let Ok(port) = env::var("MPD_PORT") {
+                if let Ok(client) = TcpStream::connect(format!("{}:{}", host, port))
+                    .map_err(Error::Io)
+                    .and_then(
+                        |stream| Client::new(StreamTypes::Tcp(stream))
+                    ) {
+                    return client
+                }
+            }
+            if let Ok(client) = TcpStream::connect(format!("{}:6600", host))
+                .map_err(Error::Io)
+                .and_then(
+                    |stream| Client::new(StreamTypes::Tcp(stream))
+                ) {
+                    return client
+                }
+            if host.starts_with("/") && cfg!(unix) {
+                if let Ok(client) = UnixStream::connect(host)
+                    .map_err(Error::Io)
+                    .and_then(
+                        |stream| Client::new(StreamTypes::Unix(stream))
+                    ) {
+                        return client
+                    }
+            }
+        }
+        if cfg!(unix) {
+            if let Some(runtime_dir) = dirs::runtime_dir() {
+                if let Ok(client) = UnixStream::connect(runtime_dir.join("mpd/socket"))
+                    .map_err(Error::Io)
+                    .and_then(
+                        |stream| Client::new(StreamTypes::Unix(stream))
+                    ) {
+                        return client
+                    }
+            } else {
+                if let Ok(client) = UnixStream::connect("/run/mpd/socket")
+                    .map_err(Error::Io)
+                    .and_then(
+                        |stream| Client::new(StreamTypes::Unix(stream))
+                    ) {
+                        return client
+                    }
+            }
+        }
+        if let Ok(client) = TcpStream::connect("localhost:6600")
+            .map_err(Error::Io)
+            .and_then(
+                |stream| Client::new(StreamTypes::Tcp(stream))
+            ) {
+                return client
+            }
+        panic!("Unable to find mpd server at localhost:6600 or /run/mpd/socket")
+    }
+}
+
+impl Client<StreamTypes> {
+    /// Make a enumized Tcp client
+    pub fn connect_tcp<A: ToSocketAddrs>(addr: A) -> Result<Client<StreamTypes>> {
+        TcpStream::connect(addr).map_err(Error::Io).and_then(|x| Client::new(StreamTypes::Tcp(x)))
+    }
+    /// Make a enumized Unix socket client
+    #[cfg(unix)]
+    pub fn connect_unix<P: AsRef<Path>>(path: P) -> Result<Client<StreamTypes>> {
+        UnixStream::connect(path).map_err(Error::Io).and_then(|x| Client::new(StreamTypes::Unix(x)))
+    }
+    /// Try both tcp and unix
+    pub fn connect(addr: &str) -> std::result::Result<Client<StreamTypes>, String> {
+        if addr.starts_with("/") && cfg!(unix) {
+            if let Ok(client) = Self::connect_unix(addr) {
+                return Ok(client);
+            } else {
+                return Err(format!("Could not connect to mpd unix socket at {}", addr))
+            }
+        }
+        if addr.starts_with("/") && !cfg!(unix) {
+            return Err("Config mpd address is a path but you are not running unix".into())
+        }
+        if let Ok(client) = Self::connect_tcp(addr) {
+            return Ok(client);
+        }
+        Err(format!("Could not connect to mpd tcp socket at {}", addr))
+    }
+}
+
+impl Client<UnixStream> {
+    /// Connect client to a unix socket
+    pub fn connect_socket<P: AsRef<Path>>(path: P) -> Result<Client<UnixStream>> {
+        UnixStream::connect(path).map_err(Error::Io).and_then(Client::new)
     }
 }
 
