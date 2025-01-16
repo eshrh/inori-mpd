@@ -187,3 +187,21 @@ impl<S: Read + Write> Idle for Client<S> {
         Ok(IdleGuard(self))
     }
 }
+
+pub struct IdleClient<S: Read + Write>(Client<S>);
+impl<S: Read + Write> IdleClient<S> {
+    pub fn new(mut c: Client<S>, subsystems: &[Subsystem]) -> Result<Self, Error> {
+        let mut ic = IdleClient(c);
+        ic.0.run_command("idle", subsystems)?;
+        Ok(ic)
+    }
+    pub fn get(&mut self) -> Result<Vec<Subsystem>, Error> {
+        self.0.run_command("noidle", ());
+        let r = self
+            .0
+            .read_list("changed")
+            .and_then(|v| v.into_iter().map(|b| b.parse().map_err(From::from)).collect::<Result<Vec<Subsystem>, Error>>());
+        self.0.run_command("idle", ());
+        r
+    }
+}
