@@ -171,6 +171,10 @@ impl<'a> ToArguments for &'a Query<'a> {
                     Ok(())
                 })?;
             }
+            if self.filters.len() > 1 {
+                qs.insert(0, '(');
+                qs.push(')');
+            }
             // println!("Singly escaped query string: {}", &qs);
             f(&qs)
         } else {
