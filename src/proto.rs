@@ -25,6 +25,23 @@ where I: Iterator<Item = io::Result<String>>
             Some(Ok(Reply::Pair(a, b))) => Some(Ok((a, b))),
             None | Some(Ok(Reply::Ok)) => None,
             Some(Ok(Reply::Ack(e))) => Some(Err(Error::Server(e))),
+            /*
+            According to mpd spec, all data communicated should be UTF-8.
+            However, this may not always be the case, see inori#24.
+            In this case, self.0.next() calls the iterator in Lines, which will fail.
+            I believe fixing this will require a fairly significant refactor?
+            Anyway, TODO.
+            This is a hacky fix to catch these UTF-8 errors and give nothing in response.
+            Notice that giving None is not an option, we must give ("", "") for reasonable
+            behavior.
+             */
+            Some(Err(Error::Io(ioerr))) => {
+                if ioerr.to_string() == "stream did not contain valid UTF-8" {
+                    Some(Ok((String::new(), String::new())))
+                } else {
+                    Some(Err(Error::Io(ioerr)))
+                }
+            }
             Some(Err(e)) => Some(Err(e)),
         }
     }
