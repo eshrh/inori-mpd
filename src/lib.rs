@@ -52,8 +52,12 @@ mod sticker;
 
 mod proto;
 pub mod client;
+#[cfg(feature = "async")]
+mod async_client;
 
 pub use client::Client;
+#[cfg(feature = "async")]
+pub use async_client::{AsyncClient, Response};
 pub use idle::{Idle, Subsystem};
 pub use message::{Channel, Message};
 pub use mount::{Mount, Neighbor};

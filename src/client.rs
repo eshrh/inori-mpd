@@ -852,7 +852,9 @@ impl<S: Read + Write> Proto for Client<S> {
 
     fn read_line(&mut self) -> Result<String> {
         let mut buf = Vec::new();
-        self.socket.read_until(b'\n', &mut buf)?;
+        if self.socket.read_until(b'\n', &mut buf)? == 0 {
+            return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "MPD response ended before OK").into());
+        }
         if buf.ends_with(&[b'\n']) {
             buf.pop();
         }
@@ -862,7 +864,7 @@ impl<S: Read + Write> Proto for Client<S> {
     }
 
     fn read_pairs(&mut self) -> Pairs<Lines<&mut BufStream<S>>> {
-        Pairs((&mut self.socket).lines())
+        Pairs::new((&mut self.socket).lines())
     }
 
     fn read_pair(&mut self) -> Result<(String, String)> {
@@ -875,12 +877,8 @@ impl<S: Read + Write> Proto for Client<S> {
 
     fn run_command<I>(&mut self, command: &str, arguments: I) -> Result<()>
     where I: ToArguments {
-        self.socket
-            .write_all(command.as_bytes())
-            .and_then(|_| arguments.to_arguments(&mut |arg| write!(self.socket, " {}", Quoted(arg))))
-            .and_then(|_| self.socket.write(&[0x0a]))
-            .and_then(|_| self.socket.flush())
-            .map_err(From::from)
+        self.socket.write_all(&encode(command, arguments)?)?;
+        self.socket.flush().map_err(From::from)
     }
 }
 // }}}

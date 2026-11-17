@@ -12,19 +12,41 @@ use std::io::{self, Lines, Read, Write};
 use std::result::Result as StdResult;
 use std::str::FromStr;
 
-pub struct Pairs<I>(pub I);
+pub struct Pairs<I> {
+    lines: I,
+    done: bool,
+}
+
+impl<I> Pairs<I> {
+    pub fn new(lines: I) -> Self {
+        Self { lines, done: false }
+    }
+}
 
 impl<I> Iterator for Pairs<I>
 where I: Iterator<Item = io::Result<String>>
 {
     type Item = Result<(String, String)>;
     fn next(&mut self) -> Option<Result<(String, String)>> {
+        if self.done {
+            return None;
+        }
         let reply: Option<Result<Reply>> =
-            self.0.next().map(|v| v.map_err(Error::Io).and_then(|s| s.parse::<Reply>().map_err(Error::Parse)));
+            self.lines.next().map(|v| v.map_err(Error::Io).and_then(|s| s.parse::<Reply>().map_err(Error::Parse)));
         match reply {
             Some(Ok(Reply::Pair(a, b))) => Some(Ok((a, b))),
-            None | Some(Ok(Reply::Ok)) => None,
-            Some(Ok(Reply::Ack(e))) => Some(Err(Error::Server(e))),
+            None => {
+                self.done = true;
+                Some(Err(io::Error::new(io::ErrorKind::UnexpectedEof, "MPD response ended before OK").into()))
+            }
+            Some(Ok(Reply::Ok)) => {
+                self.done = true;
+                None
+            }
+            Some(Ok(Reply::Ack(e))) => {
+                self.done = true;
+                Some(Err(Error::Server(e)))
+            }
             /*
             According to mpd spec, all data communicated should be UTF-8.
             However, this may not always be the case, see inori#24.
@@ -48,7 +70,7 @@ where I: Iterator<Item = io::Result<String>>
 }
 
 pub struct Maps<'a, I: 'a> {
-    pairs: &'a mut Pairs<I>,
+    pairs: &'a mut I,
     sep: &'a str,
     value: Option<String>,
     done: bool,
@@ -56,7 +78,7 @@ pub struct Maps<'a, I: 'a> {
 }
 
 impl<'a, I> Iterator for Maps<'a, I>
-where I: Iterator<Item = io::Result<String>>
+where I: Iterator<Item = Result<(String, String)>>
 {
     type Item = Result<Vec<(String, String)>>;
     fn next(&mut self) -> Option<Result<Vec<(String, String)>>> {
@@ -103,9 +125,26 @@ where I: Iterator<Item = io::Result<String>>
 impl<I> Pairs<I>
 where I: Iterator<Item = io::Result<String>>
 {
-    pub fn split<'a, 'b: 'a>(&'a mut self, f: &'b str) -> Maps<'a, I> {
-        Maps { pairs: self, sep: f, value: None, done: false, first: true }
+    pub fn split<'a, 'b: 'a>(&'a mut self, key: &'b str) -> Maps<'a, Self> {
+        Maps { pairs: self, sep: key, value: None, done: false, first: true }
     }
+}
+
+pub(crate) fn structs<T, I>(mut pairs: I, key: &str) -> Result<Vec<T>>
+where
+    T: FromIter,
+    I: Iterator<Item = Result<(String, String)>>,
+{
+    Maps { pairs: &mut pairs, sep: key, value: None, done: false, first: true }
+        .map(|record| record.and_then(|record| FromIter::from_iter(record.into_iter().map(Ok))))
+        .collect()
+}
+
+pub(crate) fn encode<I: ToArguments>(command: &str, arguments: I) -> Result<Vec<u8>> {
+    let mut bytes = command.as_bytes().to_vec();
+    arguments.to_arguments(&mut |arg| write!(bytes, " {}", Quoted(arg)))?;
+    bytes.push(b'\n');
+    Ok(bytes)
 }
 
 // Client inner communication methods {{{
@@ -122,7 +161,7 @@ pub trait Proto {
 
     fn read_structs<'a, T>(&'a mut self, key: &'static str) -> Result<Vec<T>>
     where T: 'a + FromIter {
-        self.read_pairs().split(key).map(|v| v.and_then(|v| FromIter::from_iter(v.into_iter().map(Ok)))).collect()
+        structs(self.read_pairs(), key)
     }
 
     fn read_list(&mut self, key: &'static str) -> Result<Vec<String>> {

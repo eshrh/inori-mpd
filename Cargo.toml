@@ -5,7 +5,7 @@ homepage = "https://github.com/eshrh/rust-mpd"
 license = "Unlicense"
 name = "inori-mpd"
 repository = "https://github.com/eshrh/inori-mpd.git"
-version = "0.2.3"
+version = "0.3.0"
 edition = "2018"
 
 [dependencies]
@@ -14,9 +14,12 @@ serde = { version = "1", features = ["derive"], optional = true }
 serde_repr = { version = "0.1", optional = true }
 dirs = "5.0.1"
 itertools = "0.13.0"
+tokio = { version = "1.36", features = ["io-util"], optional = true }
 
 [dev-dependencies]
 tempfile = "3.8.1"
 
 [features]
 serde = ["dep:serde", "dep:serde_repr"]
+
+async = ["dep:tokio"]
