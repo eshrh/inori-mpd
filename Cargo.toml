@@ -2,7 +2,7 @@
 authors = ["Konstantin Stepanov <me@kstep.me>", "esrh"]
 description = "fork of rust-mpd with extra features used in the inori client"
 homepage = "https://github.com/eshrh/rust-mpd"
-license = "Unlicense"
+license = "MIT"
 name = "inori-mpd"
 repository = "https://github.com/eshrh/inori-mpd.git"
 version = "0.3.0"
