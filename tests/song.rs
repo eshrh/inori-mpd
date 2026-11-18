@@ -1,4 +1,4 @@
-extern crate mpd;
+extern crate inori_mpd as mpd;
 
 mod helpers;
 use std::time::Duration;
@@ -29,7 +29,7 @@ fn lsinfo() {
     let songs = mpd.lsinfo(Song { file: "silence.flac".into(), ..Default::default() }).unwrap();
     assert_eq!(songs.len(), 1);
 
-    let song = songs.get(0).unwrap();
+    let song = songs.first().unwrap();
     assert_eq!(song.file, "silence.flac");
     assert_eq!(song.duration.expect("song should have duration"), Duration::from_millis(500));
 }

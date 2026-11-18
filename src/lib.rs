@@ -18,7 +18,7 @@
 //! ```
 //!
 //! ```rust,no_run
-//! extern crate mpd;
+//! extern crate inori_mpd as mpd;
 //!
 //! use mpd::Client;
 //! use std::net::TcpStream;
@@ -32,7 +32,6 @@
 //! # }
 //! ```
 
-mod macros;
 mod convert;
 pub mod error;
 pub mod version;

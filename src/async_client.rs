@@ -6,14 +6,17 @@ use crate::Version;
 use std::io;
 use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufStream};
 
+/// An asynchronous MPD protocol client over a caller-provided stream.
 #[derive(Debug)]
 pub struct AsyncClient<S> {
     socket: BufStream<S>,
     dirty: bool,
+    /// The protocol version reported by the server.
     pub version: Version,
 }
 
 impl<S: AsyncRead + AsyncWrite + Unpin> AsyncClient<S> {
+    /// Read the MPD greeting from a connected stream.
     pub async fn new(stream: S) -> Result<Self> {
         let mut socket = BufStream::new(stream);
         let banner = line(&mut socket).await?.ok_or(ProtoError::BadBanner)?;
@@ -21,6 +24,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin> AsyncClient<S> {
         Ok(Self { socket, dirty: false, version })
     }
 
+    /// Send a command and collect its response; unfinished transactions prevent connection reuse.
     pub async fn run<I: ToArguments>(&mut self, command: &str, arguments: I) -> Result<Response> {
         if self.dirty {
             return Err(io::Error::new(io::ErrorKind::BrokenPipe, "previous MPD transaction did not finish").into());
@@ -54,22 +58,27 @@ impl<S: AsyncRead + AsyncWrite + Unpin> AsyncClient<S> {
     }
 }
 
+/// The ordered fields of a completed MPD response.
 #[derive(Debug)]
 pub struct Response(Vec<(String, String)>);
 
 impl Response {
+    /// Decode the response as a single record.
     pub fn one<T: FromIter>(self) -> Result<T> {
         T::from_iter(self.0.into_iter().map(Ok))
     }
 
+    /// Decode records separated by the given field.
     pub fn structs<T: FromIter>(self, key: &str) -> Result<Vec<T>> {
         structs(self.0.into_iter().map(Ok), key)
     }
 
+    /// Collect values of the given field in response order.
     pub fn list(self, key: &str) -> Vec<String> {
         self.0.into_iter().filter_map(|(field, value)| if field == key { Some(value) } else { None }).collect()
     }
 
+    /// Return all fields, preserving their order and repeated keys.
     pub fn pairs(self) -> Vec<(String, String)> {
         self.0
     }

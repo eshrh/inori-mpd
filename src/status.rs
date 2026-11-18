@@ -123,6 +123,7 @@ pub struct AudioFormat {
     /// Sample rate, kbps.
     /// For DSD, to align with MPD's internal handling, the returned rate will be in kilobytes per second instead.
     /// See https://mpd.readthedocs.io/en/latest/user.html#audio-output-format.
+    #[allow(rustdoc::bare_urls)]
     pub rate: u32,
     /// Sample resolution in bits, can be 0 for floating point resolution or 1 for DSD.
     pub bits: u8,

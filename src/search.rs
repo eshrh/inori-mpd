@@ -3,10 +3,7 @@
 // TODO: unfinished functionality
 
 use crate::proto::{Quoted, ToArguments};
-use std::{
-    io::Write,  // implements write for Vec
-    borrow::Cow
-};
+use std::borrow::Cow;
 use std::convert::Into;
 use std::fmt;
 use std::result::Result as StdResult;
@@ -38,7 +35,7 @@ pub struct Filter<'a> {
 }
 
 impl<'a> Filter<'a> {
-    pub fn new<W>(typ: Term<'a>, what: W) -> Filter
+    pub fn new<W>(typ: Term<'a>, what: W) -> Filter<'a>
     where W: 'a + Into<Cow<'a, str>> {
         Filter {
             typ,
@@ -47,7 +44,7 @@ impl<'a> Filter<'a> {
         }
     }
 
-    pub fn new_with_op<W>(typ: Term<'a>, what: W, how: Operation) -> Filter
+    pub fn new_with_op<W>(typ: Term<'a>, what: W, how: Operation) -> Filter<'a>
     where W: 'a + Into<Cow<'a, str>> {
         Filter {
             typ,
@@ -138,16 +135,16 @@ impl<'a> ToArguments for &'a Filter<'a> {
             Term::Base | Term::LastMod => {
                 f(&format!(
                     "({} {})",
-                    &self.typ,
-                    &Quoted(&self.what).to_string()
+                    self.typ,
+                    Quoted(&self.what)
                 ))
             }
             _ => {
                 f(&format!(
                     "({} {} {})",
-                    &self.typ,
-                    &self.how,
-                    &Quoted(&self.what).to_string())
+                    self.typ,
+                    self.how,
+                    Quoted(&self.what))
                 )
             }
         }
@@ -188,7 +185,7 @@ impl ToArguments for Window {
     where F: FnMut(&str) -> StdResult<(), E> {
         if let Some(window) = self.0 {
             f("window")?;
-            f(&format! {"{}:{}", window.0, window.1})?;
+            f(&format!("{}:{}", window.0, window.1))?;
         }
         Ok(())
     }
@@ -222,7 +219,7 @@ mod test {
         let mut query = Query::new();
         let finished = query.and(Term::Tag("albumartist".into()), "Mac DeMarco").and(Term::Tag("album".into()), "Salad Days");
         let output = collect(&*finished);
-        assert_eq!(output, vec!["albumartist", "Mac DeMarco", "album", "Salad Days"]);
+        assert_eq!(output, vec![r#"((albumartist == "Mac DeMarco") AND (album == "Salad Days"))"#]);
     }
 
     #[test]

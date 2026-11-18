@@ -150,7 +150,7 @@ impl<S: Read + Write> Client<S> {
     }
 
     /// Switch to a next song in queue
-    #[cfg_attr(feature = "cargo-clippy", allow(clippy::should_implement_trait))]
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Result<()> {
         self.run_command("next", ()).and_then(|_| self.expect_ok())
     }
@@ -413,7 +413,7 @@ impl<S: Read + Write> Client<S> {
             let _ = self.read_line()?;
             let result = self.read_line()?;
             if result != "OK" {
-                return Err(ProtoError::NotOk)?;
+                return Err(ProtoError::NotOk.into());
             }
 
             if size.parse::<usize>()? == buf.len() {
@@ -667,7 +667,7 @@ impl<S: Read + Write> Proto for Client<S> {
         if self.socket.read_until(b'\n', &mut buf)? == 0 {
             return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "MPD response ended before OK").into());
         }
-        if buf.ends_with(&[b'\n']) {
+        if buf.ends_with(b"\n") {
             buf.pop();
         }
         let str = String::from_utf8(buf)

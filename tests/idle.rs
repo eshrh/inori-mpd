@@ -1,4 +1,4 @@
-extern crate mpd;
+extern crate inori_mpd as mpd;
 
 mod helpers;
 use helpers::Daemon;

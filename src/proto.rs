@@ -233,7 +233,7 @@ impl ToArguments for () {
     }
 }
 
-impl<'a> ToArguments for &'a str {
+impl ToArguments for &str {
     fn to_arguments<F, E>(&self, f: &mut F) -> StdResult<(), E>
     where F: FnMut(&str) -> StdResult<(), E> {
         f(self)
@@ -283,7 +283,7 @@ argument_for_tuple! {t0: T0, t1: T1, t2: T2}
 argument_for_tuple! {t0: T0, t1: T1, t2: T2, t3: T3}
 argument_for_tuple! {t0: T0, t1: T1, t2: T2, t3:T3, t4: T4}
 
-impl<'a, T: ToArguments> ToArguments for &'a [T] {
+impl<T: ToArguments> ToArguments for &[T] {
     fn to_arguments<F, E>(&self, f: &mut F) -> StdResult<(), E>
     where F: FnMut(&str) -> StdResult<(), E> {
         for arg in *self {
@@ -302,7 +302,7 @@ impl<'a, D: fmt::Display + 'a + ?Sized> fmt::Display for Quoted<'a, D> {
             // return Ok(());
         }
         let quoted = unquoted.replace('\\', r"\\").replace('"', r#"\""#);
-        formatter.write_fmt(format_args!("\"{}\"", &quoted))
+        formatter.write_fmt(format_args!("\"{}\"", quoted))
     }
 }
 

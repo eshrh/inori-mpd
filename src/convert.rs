@@ -38,19 +38,19 @@ impl ToPlaylistName for Playlist {
     }
 }
 
-impl<'a> ToPlaylistName for &'a Playlist {
+impl ToPlaylistName for &Playlist {
     fn to_name(&self) -> &str {
         &self.name
     }
 }
 
-impl<'a> ToPlaylistName for &'a String {
+impl ToPlaylistName for &String {
     fn to_name(&self) -> &str {
         self
     }
 }
 
-impl<'a> ToPlaylistName for &'a str {
+impl ToPlaylistName for &str {
     fn to_name(&self) -> &str {
         self
     }
@@ -295,7 +295,7 @@ impl ToSongPath for Song {
     }
 }
 
-impl<'a, T: ToSongPath> ToSongPath for &'a T {
+impl<T: ToSongPath> ToSongPath for &T {
     fn to_path(&self) -> &str {
         (*self).to_path()
     }
