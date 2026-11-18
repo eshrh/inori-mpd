@@ -12,8 +12,6 @@ edition = "2018"
 bufstream = { version = "0.1", default-features = false }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_repr = { version = "0.1", optional = true }
-dirs = "5.0.1"
-itertools = "0.13.0"
 tokio = { version = "1.36", features = ["io-util"], optional = true }
 
 [dev-dependencies]
