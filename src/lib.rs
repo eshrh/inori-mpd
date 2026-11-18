@@ -53,6 +53,9 @@ mod proto;
 pub mod client;
 #[cfg(feature = "async")]
 mod async_client;
+/// Async connection establishment and MPD server discovery.
+#[cfg(feature = "async")]
+pub mod connection;
 
 pub use client::Client;
 #[cfg(feature = "async")]
